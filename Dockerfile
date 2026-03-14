@@ -1,7 +1,7 @@
 # parameters
-ARG REPO_NAME="eece5560-base"
-ARG DESCRIPTION="Base class repo for UML EECE 5560"
-ARG MAINTAINER="Paul Robinette (paul_robinette@uml.edu)"
+ARG REPO_NAME="sit310"
+ARG DESCRIPTION="Sit310 ROS Turtleim Teleoperation"
+ARG MAINTAINER="Akashya Mann (akmcanda@gmail.com)"
 # pick an icon from: https://fontawesome.com/v4.7.0/icons/
 ARG ICON="cube"
 
@@ -19,9 +19,9 @@ FROM duckietown/${BASE_IMAGE}:${BASE_TAG} as BASE
 # recall all arguments
 ARG ARCH
 ARG DISTRO
-ARG REPO_NAME="sit310"
-ARG DESCRIPTION="SIT310 ROS Turtlesim Teleoperation"
-ARG MAINTAINER="Akashya Mann akmcanda@gmail.com"
+ARG REPO_NAME
+ARG DESCRIPTION
+ARG MAINTAINER
 ARG ICON
 ARG BASE_TAG
 ARG BASE_IMAGE
