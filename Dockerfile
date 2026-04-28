@@ -7,8 +7,8 @@ ARG ICON="cube"
 
 # ==================================================>
 # ==> Do not change the code below this line
-ARG ARCH=arm32v7
-ARG DISTRO=daffy
+ARG ARCH=amd64
+ARG DISTRO=ente
 ARG BASE_TAG=${DISTRO}-${ARCH}
 ARG BASE_IMAGE=dt-core
 ARG LAUNCHER=default
