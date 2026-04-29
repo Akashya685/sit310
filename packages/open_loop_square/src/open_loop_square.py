@@ -19,14 +19,15 @@ class Drive_Square:
             Twist2DStamped,
             queue_size=1
         )
-        rospy.Subscriber(
+
+        self.sub = rospy.Subscriber(
             f'/{vehicle_name}/fsm_node/mode',
             FSMState,
             self.fsm_callback,
             queue_size=1
         )
 
-    # robot only moves when lane following is selected on the duckiebot joystick app
+    # Start movement only when Lane Following mode is selected
     def fsm_callback(self, msg):
         rospy.loginfo("State: %s", msg.state)
 
@@ -39,51 +40,53 @@ class Drive_Square:
             self.move_robot()
             self.is_running = False
 
-    # Sends zero velocities to stop the robot
     def stop_robot(self):
         self.cmd_msg.header.stamp = rospy.Time.now()
         self.cmd_msg.v = 0.0
         self.cmd_msg.omega = 0.0
         self.pub.publish(self.cmd_msg)
 
-    # Spin forever but listen to message callbacks
     def run(self):
         rospy.spin()
 
-    # Robot drives in a square and then stops
     def move_robot(self):
-        forward_speed = 0.35
-        turn_speed = 3.0
+        forward_speed = 0.30
+        turn_speed = 2.6
 
-        forward_time = 2.3
-        turn_time = 1.05
+        # Move forward about 1 meter
+        forward_time = 3.3
 
-        rospy.loginfo("Starting square...")
+        # Turn left about 90 degrees
+        turn_time = 1.18
 
+        print("RUNNING 1 METER SQUARE CODE")
+
+        rate = rospy.Rate(10)
+
+        
         for i in range(4):
-            # move forward
-            self.cmd_msg.header.stamp = rospy.Time.now()
-            self.cmd_msg.v = forward_speed
-            self.cmd_msg.omega = 0.0
-            self.pub.publish(self.cmd_msg)
-            rospy.loginfo("Forward %d", i + 1)
-            rospy.sleep(forward_time)
 
-            # stop briefly
+            start_time = rospy.Time.now()
+            while (rospy.Time.now() - start_time).to_sec() < forward_time:
+                self.cmd_msg.header.stamp = rospy.Time.now()
+                self.cmd_msg.v = forward_speed
+                self.cmd_msg.omega = 0.0
+                self.pub.publish(self.cmd_msg)
+                rate.sleep()
+
             self.stop_robot()
-            rospy.sleep(0.2)
+            rospy.sleep(0.3)
 
-            # turn in place
-            self.cmd_msg.header.stamp = rospy.Time.now()
-            self.cmd_msg.v = 0.0
-            self.cmd_msg.omega = turn_speed
-            self.pub.publish(self.cmd_msg)
-            rospy.loginfo("Turn %d", i + 1)
-            rospy.sleep(turn_time)
+            start_time = rospy.Time.now()
+            while (rospy.Time.now() - start_time).to_sec() < turn_time:
+                self.cmd_msg.header.stamp = rospy.Time.now()
+                self.cmd_msg.v = 0.0
+                self.cmd_msg.omega = turn_speed
+                self.pub.publish(self.cmd_msg)
+                rate.sleep()
 
-            # stop briefly
             self.stop_robot()
-            rospy.sleep(0.2)
+            rospy.sleep(0.3)
 
         self.stop_robot()
         rospy.loginfo("Square complete")
