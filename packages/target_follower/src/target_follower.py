@@ -19,9 +19,9 @@ class Target_Follower:
         rospy.Subscriber('apriltag_detector_node/detections', AprilTagDetectionArray, self.tag_callback, queue_size=1)
         ################################################################
 
-        self.seek_omega = 0.4
-        self.look_omega = 0.8
-        self.center_tolerance = 0.05
+        self.seek_omega = 0.10
+        self.look_omega = 0.15
+        self.center_tolerance = 0.25
 
         rospy.spin() # Spin forever but listen to message callbacks
 
