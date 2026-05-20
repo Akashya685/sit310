@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+
+#Python Libs
+import sys, time
+
+#numpy
+import numpy as np
+
+#OpenCV
+import cv2
+from cv_bridge import CvBridge
+
+#ROS Libraries
+import rospy
+import roslib
+
+#ROS Message Types
+from sensor_msgs.msg import CompressedImage
+
+class Lane_Detector:
+    def __init__(self):
+        self.cv_bridge = CvBridge()
+        self.saved = False
+
+        #### REMEMBER TO CHANGE THE TOPIC NAME! #####        
+        self.image_sub = rospy.Subscriber('/mybotdan/camera_node/image/compressed', CompressedImage, self.image_callback, queue_size=1)
+        #############################################
+
+        rospy.init_node("lane_analysis_6_2C")
+
+    def output_lines(self, original_image, lines, color):
+        output = np.copy(original_image)
+
+        if lines is not None:
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+                cv2.line(output, (x1, y1), (x2, y2), color, 3, cv2.LINE_AA)
+                cv2.circle(output, (x1, y1), 3, (0, 255, 0), -1)
+                cv2.circle(output, (x2, y2), 3, (0, 0, 255), -1)
+
+        return output
+
+    def lane_lines_output(self, input_img):
+        hsv_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2HSV)
+
+        lower_white = np.array([0, 0, 180])
+        upper_white = np.array([180, 70, 255])
+        white_mask = cv2.inRange(hsv_img, lower_white, upper_white)
+
+        lower_yellow = np.array([15, 80, 80])
+        upper_yellow = np.array([40, 255, 255])
+        yellow_mask = cv2.inRange(hsv_img, lower_yellow, upper_yellow)
+
+        white_edges = cv2.Canny(white_mask, 100, 200)
+        yellow_edges = cv2.Canny(yellow_mask, 100, 200)
+
+        white_lines = cv2.HoughLinesP(
+            white_edges,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=25,
+            minLineLength=50,
+            maxLineGap=15
+        )
+
+        yellow_lines = cv2.HoughLinesP(
+            yellow_edges,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=25,
+            minLineLength=50,
+            maxLineGap=15
+        )
+
+        output = self.output_lines(input_img, white_lines, (255, 0, 0))
+        output = self.output_lines(output, yellow_lines, (0, 0, 255))
+
+        return output
+
+    def image_callback(self,msg):
+        rospy.loginfo("image_callback")
+
+
+        # Convert to opencv image 
+        img = self.cv_bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
+        
+        #### YOUR CODE GOES HERE ####
+
+        img = cv2.flip(img, 0)
+
+        height, width, channels = img.shape
+        cropped_img = img[int(height * 0.45):height, 0:width]
+
+        hsv_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
+
+        lower_yellow = np.array([15, 80, 80])
+        upper_yellow = np.array([40, 255, 255])
+        yellow_mask = cv2.inRange(hsv_img, lower_yellow, upper_yellow)
+        yellow_filtered = cv2.bitwise_and(cropped_img, cropped_img, mask=yellow_mask)
+
+        rgb_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB)
+        lower_yellow_rgb = np.array([100, 100, 0])
+        upper_yellow_rgb = np.array([255, 255, 120])
+        yellow_mask_rgb = cv2.inRange(rgb_img, lower_yellow_rgb, upper_yellow_rgb)
+        yellow_filtered_rgb = cv2.bitwise_and(rgb_img, rgb_img, mask=yellow_mask_rgb)
+        yellow_filtered_rgb = cv2.cvtColor(yellow_filtered_rgb, cv2.COLOR_RGB2BGR)
+
+        gray_cropped = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+
+        canny_50_150 = cv2.Canny(gray_cropped, 50, 150)
+        canny_100_200 = cv2.Canny(gray_cropped, 100, 200)
+        canny_150_250 = cv2.Canny(gray_cropped, 150, 250)
+
+        hough_lines_20 = cv2.HoughLinesP(
+            canny_100_200,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=25,
+            minLineLength=20,
+            maxLineGap=15
+        )
+
+        hough_lines_50 = cv2.HoughLinesP(
+            canny_100_200,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=25,
+            minLineLength=50,
+            maxLineGap=15
+        )
+
+        hough_lines_100 = cv2.HoughLinesP(
+            canny_100_200,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=25,
+            minLineLength=100,
+            maxLineGap=15
+        )
+
+        hough_output_20 = self.output_lines(cropped_img, hough_lines_20, (255, 0, 0))
+        hough_output_50 = self.output_lines(cropped_img, hough_lines_50, (255, 0, 0))
+        hough_output_100 = self.output_lines(cropped_img, hough_lines_100, (255, 0, 0))
+
+        dark_img = cv2.convertScaleAbs(cropped_img, alpha=0.5, beta=0)
+
+        normal_lighting_lines = self.lane_lines_output(cropped_img)
+        dark_lighting_lines = self.lane_lines_output(dark_img)
+
+        cv2.imshow('selected_cropped_image', cropped_img)
+        cv2.imshow('canny_50_150', canny_50_150)
+        cv2.imshow('canny_100_200', canny_100_200)
+        cv2.imshow('canny_150_250', canny_150_250)
+        cv2.imshow('hough_minLineLength_20', hough_output_20)
+        cv2.imshow('hough_minLineLength_50', hough_output_50)
+        cv2.imshow('hough_minLineLength_100', hough_output_100)
+        cv2.imshow('hsv_yellow_filtered', yellow_filtered)
+        cv2.imshow('rgb_yellow_filtered', yellow_filtered_rgb)
+        cv2.imshow('normal_lighting_lines', normal_lighting_lines)
+        cv2.imshow('dark_lighting_lines', dark_lighting_lines)
+
+        if self.saved == False:
+            cv2.imwrite('/data/selected_cropped_image.png', cropped_img)
+            cv2.imwrite('/data/canny_50_150.png', canny_50_150)
+            cv2.imwrite('/data/canny_100_200.png', canny_100_200)
+            cv2.imwrite('/data/canny_150_250.png', canny_150_250)
+            cv2.imwrite('/data/hough_minLineLength_20.png', hough_output_20)
+            cv2.imwrite('/data/hough_minLineLength_50.png', hough_output_50)
+            cv2.imwrite('/data/hough_minLineLength_100.png', hough_output_100)
+            cv2.imwrite('/data/hsv_yellow_filtered.png', yellow_filtered)
+            cv2.imwrite('/data/rgb_yellow_filtered.png', yellow_filtered_rgb)
+            cv2.imwrite('/data/normal_lighting_lines.png', normal_lighting_lines)
+            cv2.imwrite('/data/dark_lighting_lines.png', dark_lighting_lines)
+            self.saved = True
+            print("Saved screenshots to /data")
+
+        #############################
+
+        cv2.waitKey(1)
+
+    def run(self):
+    	rospy.spin() # Spin forever but listen to message callbacks
+
+if __name__ == "__main__":
+    try:
+        lane_detector_instance = Lane_Detector()
+        lane_detector_instance.run()
+    except rospy.ROSInterruptException:
+        pass
