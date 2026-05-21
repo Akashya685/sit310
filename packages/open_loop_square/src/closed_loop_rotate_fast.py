@@ -1,6 +1,4 @@
-
 #!/usr/bin/env python3
-
 import rospy
 from closed_loop_base import ClosedLoopBase
 
